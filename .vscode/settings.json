@@ -1,3 +1,8 @@
 {
-    "typescript.preferences.importModuleSpecifierEnding": "js"
+  "typescript.preferences.importModuleSpecifierEnding": "js",
+  "deno.enable": true,
+  "deno.enablePaths": [
+    "./source/coders/tests",
+    "./source/id/tests"
+  ]
 }
