@@ -1,35 +1,60 @@
-import { ByteArray } from '../coders/byteArray.ts';
+import { BaseId } from "./base.ts";
+import { ByteArray } from "../coders/byteArray.ts";
+const { BaseId } = require("./base");
 
-const _bytes = Symbol('bytes');
+const TIME_OFFSET = 0;
 
-export class BaseId {
-  //Constructors
+const EPOCH_ORIGIN_MS = 0;
+const UINT32_RADIX = Math.pow(2, 32);
+const UINT8_MAX = 0b11111111;
 
-  constructor(bytes) {
-    this[_bytes] = bytes;
-  }
+export function setTime(time, bytes) {
+    const time_low = time % UINT32_RADIX;
+    const time_high = (time - time_low) / UINT32_RADIX;
 
-  clone() {
-    return new this.constructor(this.bytes.slice());
-  }
+    let idx = TIME_OFFSET - 1;
+    bytes[++idx] = (time_high >>> 8) & UINT8_MAX;
+    bytes[++idx] = (time_high >>> 0) & UINT8_MAX;
+    bytes[++idx] = (time_low >>> 24) & UINT8_MAX;
+    bytes[++idx] = (time_low >>> 16) & UINT8_MAX;
+    bytes[++idx] = (time_low >>> 8) & UINT8_MAX;
+    bytes[++idx] = (time_low >>> 0) & UINT8_MAX;
+}
 
-  // Accessors
+export class Ulid extends BaseId {
+    //Constructors
 
-  get bytes() {
-    return this[_bytes];
-  }
+    static generate({ time } = {}) {
+        time = EpochConverter.toEpoch(EPOCH_ORIGIN_MS, time);
 
-  get [Symbol.toStringTag]() {
-    return this.constructor.name;
-  }
+        let bytes = ByteArray.generateRandomFilled();
 
-  // Comparators
+        setTime(time, bytes);
 
-  compare(rhs) {
-    return ByteArray.compare(this.bytes, rhs.bytes);
-  }
+        return new this(bytes);
+    }
 
-  equal(rhs) {
-    return this.compare(rhs) === 0;
-  }
+    static MIN() {
+        return new this(ByteArray.generateZeroFilled());
+    }
+
+    static MAX() {
+        return new this(ByteArray.generateOneFilled());
+    }
+
+    // Accessors
+
+    get time() {
+        let idx = TIME_OFFSET - 1;
+        const time_high = 0 | (this.bytes[++idx] << 8) | (this.bytes[++idx] << 0);
+        const time_low =
+            0 |
+            (this.bytes[++idx] << 24) |
+            (this.bytes[++idx] << 16) |
+            (this.bytes[++idx] << 8) |
+            (this.bytes[++idx] << 0);
+        const epoch_ms = time_high * UINT32_RADIX + (time_low >>> 0);
+
+        return EpochConverter.fromEpoch(EPOCH_ORIGIN_MS, epoch_ms);
+    }
 }
